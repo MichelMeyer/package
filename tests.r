@@ -53,12 +53,12 @@ if( ! system(paste("ping", "www.dropbox.com"), show.output.on.console = F)) {
     x1 <- NULL
     try(x1 <- getAdjPrices("all", info = "single", fill = "last"))
     if( ! is.null(x1))
-      all.adj.downloaded = T
+      tests$all.adj.downloaded = T
     
     x2 <- NULL
     try(x2 <- getBalanceSheet("all"))
     if( ! is.null(x2))
-      all.balances.downloaded = T  
+      tests$all.balances.downloaded = T  
   })
   
   Sys.sleep(5)

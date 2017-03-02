@@ -208,7 +208,7 @@ getPrices <- function(shares,
           if(names(teste)[1] == shares[[1]]) cat("Progress of aggregation: \n")
           P <- c(which(shares == names(teste)[1]) - (1 : 0)) / length(shares)
           cat(paste(progresso[prog.bar >= P[1] & prog.bar < P[2]], collapse = ""))
-          if(names(teste)[1] == tail(shares, 1)) cat("100%")
+          if(names(teste)[1] == tail(shares, 1)) cat("100%\n")
         }
         if(is.null(dim(teste[[1]]))) {
           misspecified <- c(misspecified, names(teste)[1])
@@ -262,7 +262,7 @@ getPrices <- function(shares,
           if(names(teste)[1] == shares[[1]]) cat("Progress of aggregation: \n")
           P <- c(which(shares == names(teste)[1]) - (1 : 0)) / length(shares)
           cat(paste(progresso[prog.bar >= P[1] & prog.bar < P[2]], collapse = ""))
-          if(names(teste)[1] == tail(shares, 1)) cat("100%")
+          if(names(teste)[1] == tail(shares, 1)) cat("100%\n")
         }
         if(is.null(dim(teste[[1]]))) { 
           misspecified <- c(misspecified, shares[[i]])
@@ -556,7 +556,7 @@ getAdjPrices <- function(shares,
         if(names(teste)[1] == shares[[1]]) cat("Progress of aggregation: \n")
         P <- c(which(shares == names(teste)[1]) - (1 : 0)) / length(shares)
         cat(paste(progresso[prog.bar >= P[1] & prog.bar < P[2]], collapse = ""))
-        if(names(teste)[1] == tail(shares, 1)) cat("100%")
+        if(names(teste)[1] == tail(shares, 1)) cat("100%\n")
       }
       if(is.null(dim(teste[[1]]))) {
         misspecified <- c(misspecified, names(teste)[1])
@@ -633,7 +633,7 @@ getAdjPrices <- function(shares,
         if(names(teste)[1] == shares[[1]]) cat("Progress of aggregation: \n")
         P <- c(which(shares == names(teste)[1]) - (1 : 0)) / length(shares)
         cat(paste(progresso[prog.bar >= P[1] & prog.bar < P[2]], collapse = ""))
-        if(names(teste)[1] == tail(shares, 1)) cat("100%")
+        if(names(teste)[1] == tail(shares, 1)) cat("100%\n")
       }
       if(is.null(dim(teste[[1]]))) { 
         misspecified <- c(misspecified, shares[[i]])
@@ -751,7 +751,7 @@ getBalanceSheet <- function(firms, quarter = NULL) {
       if(exists("prog.bar")) {
         x <- c(which(firms == firm) - (1 : 0)) / length(firms)
         cat(paste(progresso[prog.bar >= x[1] & prog.bar < x[2]], collapse = ""))
-        if(firm == tail(firms, 1)) cat("100%")
+        if(firm == tail(firms, 1)) cat("100%\n")
       }
       
       if ( ! exists("especificacao")) {
