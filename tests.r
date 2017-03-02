@@ -1,11 +1,11 @@
 # Test some of the package's functions
-
 source("package.r")
 
 if( ! system(paste("ping", "www.dropbox.com"), show.output.on.console = F)) {
   
+  # Time's mesuge.
   y <- system.time({
-    # The goal here is to test the outputs
+    # The goal here is to test the outputs.
     tests <- data.frame(single.NA = F, single.drop = F, single.last = F, simplified = F, full = F,
                         balance.quarter.right = F, balance.quarter.wrong = F, balance.NULL = F,
                         all.adj.downloaded = F, all.balances.downloaded = F)
@@ -84,8 +84,3 @@ if( ! system(paste("ping", "www.dropbox.com"), show.output.on.console = F)) {
 } else {
   warning("Verify your connection!")
 }
-  
-
-  
-
-
