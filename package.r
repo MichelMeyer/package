@@ -2,6 +2,8 @@
 if( ! "xts" %in% installed.packages()) install.packages("xts", dependencies = T)
 library(xts)
 
+# Internal functions:
+
 get.files <- function(link) {
   # This is a function for internal uses!
   
@@ -27,9 +29,9 @@ get.files <- function(link) {
     file <- read.table(url(links[link][[1]]), header = T, stringsAsFactors = F)
     write.table(file, paste0(tempdir(), "\\omni\\", link, ".txt"), row.names = F)
   }
+  closeAllConnections()
   return(file)
 }
-
 get.shares <- function(Shares, envir = NULL) {
   # This is a function used in other functions.
   
@@ -89,9 +91,142 @@ get.shares <- function(Shares, envir = NULL) {
       return(x)
     }
   })
+  closeAllConnections()
   
   return(teste)
 }
+get.fin.stat <- function(firms, quarter = NULL, envir = NULL) {
+  
+  dicionario <- get.files("dicionariobruto")
+  sharelinks <- get.files("linkscotacoes")
+  dic2 <- get.files("linkseventos")
+  balancos <- get.files("linksbalancos")
+  
+  fin.stat <- lapply(firms, function(firm) {
+    
+    if( ! is.null(envir)) {
+      prog.bar <- get("prog.bar", envir = envir)
+      progresso <- get("progresso", envir = envir)
+    }
+    
+    if(exists("prog.bar")) {
+      x <- c(which(firms == firm) - (1 : 0)) / length(firms)
+      cat(paste(progresso[prog.bar >= x[1] & prog.bar < x[2]], collapse = ""))
+      if(firm == tail(firms, 1)) cat("100%\n")
+    }
+    
+    if ( ! exists("especificacao")) {
+      if (nchar(firm) <= 6) {
+        if ( ! any ( ! (strsplit(as.character(firm), "")[[1]] %in% 0:9))) {
+          especificacao <- "CodigoCvm"
+        }
+      }
+    }
+    
+    if ( ! exists("especificacao")) {
+      x <- which(strsplit(firm, "")[[1]] %in% c(".", "/", "-"))
+      if (length(x) > 0){
+        if ( ! any ( ! diff(x)  == c(4, 4, 5))) {
+          if(any( ! strsplit(firm, "")[[1]][setdiff(1 : nchar(firm), x)] %in% c(0:9))) {
+            stop("There are some invalid characters in the input.")
+          } else {
+            especificacao <- "NumeroCnpjCompanhiaAberta"
+          }
+        }
+      }
+      rm(x)
+    }
+    
+    if ( ! exists("especificacao")) {
+      if (firm %in% dicionario[,"NomeRazaoSocial"])
+        especificacao <- "NomeRazaoSocial"
+    }
+    
+    if ( ! exists("especificacao")) {
+      if(all(strsplit(substr(firm, 1, 4), "")[[1]] %in% LETTERS))
+        if (substr(firm, 1, 4) %in% dicionario[, "codNeg"]){
+          firm <- substr(firm, 1, 4)
+          especificacao <- "codNeg"
+        }
+    }
+    
+    if ( ! exists("especificacao")) {
+      return("We do not found the balance sheets of the selected firm.")
+    } else {
+      
+      if (especificacao == "CodigoCvm") {
+        x <- which(dicionario[, especificacao] == as.numeric(firm))
+        x <- max(x)
+      } else {
+        x <- which(dicionario[, especificacao] == firm)
+        x <- max(x)
+        firm <- dicionario[x, "CodigoCvm"]  
+      }
+      
+      nome <- paste(dicionario[x, "codNeg"], sep=".")
+      if (nome == "NA" | is.na(nome))
+        nome <- paste("CVM", dicionario[x, "CodigoCvm"], sep=".")
+      
+      dest <- paste0(tempdir(), "\\omni\\", firm)
+      if(file.exists(dest)) {
+        tfile <- file.info(dest)$mtime
+        tupdate <- strsplit(as.character(Sys.time()), " ")[[1]][1]
+        tupdate <- as.POSIXct(paste(tupdate, "22:00:00"))
+        if(tfile <= tupdate & Sys.time() >= tupdate) {
+          link <- paste0("https://dl.dropboxusercontent.com/s/",
+                         balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, ".csv?dl=0")
+          download.file(link, destfile = dist, mode = "wb", quiet = T)
+        }
+        rm(tfile, tupdate)
+      } else {  
+        link <- paste0("https://dl.dropboxusercontent.com/s/",
+                       balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, ".csv?dl=0")
+        download.file(link, destfile = dest, mode = "wb", quiet = T)
+      }
+      
+      x <- readRDS(dest)
+      
+      if( ! is.null(quarter)) {
+        
+        x <- x[, which(colnames(x) == "V1") : ncol(x)]
+        
+        if(any(substr(x[, "V6"], 1, 7) == quarter)) {
+          
+          x <- x[c(1 : 3, which(substr(x[, "V6"], 1, 7) == quarter)), ]
+          x <- x[, x[4, ] != ""]
+          x <- t(x)
+          
+          rownames(x) <- NULL
+          colnames(x) <- c("kind of information", "id of account", "name of account", "Value")
+          x[x[, 1] == "-", 1] <- "firm's basic information"
+          x[x[, 1] == "1", 1] <- "Individual Result"
+          x[x[, 1] == "2", 1] <- "Consolidated Result"
+          
+        } else {
+          
+          x <- substr(x[ - c(1 : 3), "V6"], 1, 7)
+          print("This specified quarter isn't in our data")
+          print("Currently the quarters available are the periods below:")
+          print(paste(paste(head(x, 4), collapse = ", "), "...",
+                      paste(tail(x, 4), collapse = ", "), sep = ", "))
+          
+          rm(x)
+          return(invisible(NULL))
+          break
+        }
+        
+      } else {
+        x <- x[, 1 : (which(colnames(x) == "V1") - 1)]
+        x <- x[1 : (nrow(x) - 3), ]
+      }
+      return(x)
+    }
+  })
+  closeAllConnections()
+  return(fin.stat)
+}
+
+# Package functions:
 
 getPrices <- function(shares,
                       info = "simplified", value = "Close", fill = NA) {
@@ -688,7 +823,7 @@ getAdjPrices <- function(shares,
   return(x)
 }
 
-getBalanceSheet <- function(firms, quarter = NULL) {
+getFinancialStatements <- function(firms, quarter = NULL) {
   # This functions load to R a table with the value of the most important accounts of the specified firm.
   # Arguments:
   #   firms: value that must have one of the values below:
@@ -718,8 +853,7 @@ getBalanceSheet <- function(firms, quarter = NULL) {
     }
     
     dicionario <- get.files("dicionariobruto")
-    balancos <- get.files("linksbalancos")
-    
+
     if("all" %in% firms) {
       firms <- sort(c(firms[firms != "all"], unique(dicionario[, 1])))
     }
@@ -731,12 +865,14 @@ getBalanceSheet <- function(firms, quarter = NULL) {
       firms <- firms[firms != 3]
     }
     
+    envir <- NULL
     if(length(firms) > 20) {
       
       cat("It can take a while.\n")
       
       progresso <- 0 : 10
       div <- 6
+      envir <- environment()
       
       progresso <- paste(paste0("", progresso * (100 / max(progresso)), "% "),
                          collapse = paste0(rep("| ", div), collapse = ""))
@@ -746,122 +882,7 @@ getBalanceSheet <- function(firms, quarter = NULL) {
       prog.bar <- prog.bar / max(prog.bar)
     }
     
-    teste <- lapply(firms, function(firm) {
-      
-      if(exists("prog.bar")) {
-        x <- c(which(firms == firm) - (1 : 0)) / length(firms)
-        cat(paste(progresso[prog.bar >= x[1] & prog.bar < x[2]], collapse = ""))
-        if(firm == tail(firms, 1)) cat("100%\n")
-      }
-      
-      if ( ! exists("especificacao")) {
-        if (nchar(firm) <= 6) {
-          if ( ! any ( ! (strsplit(as.character(firm), "")[[1]] %in% 0:9))) {
-            especificacao <- "CodigoCvm"
-          }
-        }
-      }
-      
-      if ( ! exists("especificacao")) {
-        x <- which(strsplit(firm, "")[[1]] %in% c(".", "/", "-"))
-        if (length(x) > 0){
-          if ( ! any ( ! diff(x)  == c(4, 4, 5))) {
-            if(any( ! strsplit(firm, "")[[1]][setdiff(1 : nchar(firm), x)] %in% c(0:9))) {
-              stop("There are some invalid characters in the input.")
-            } else {
-              especificacao <- "NumeroCnpjCompanhiaAberta"
-            }
-          }
-        }
-        rm(x)
-      }
-      
-      if ( ! exists("especificacao")) {
-        if (firm %in% dicionario[,"NomeRazaoSocial"])
-          especificacao <- "NomeRazaoSocial"
-      }
-      
-      if ( ! exists("especificacao")) {
-        if(all(strsplit(substr(firm, 1, 4), "")[[1]] %in% LETTERS))
-          if (substr(firm, 1, 4) %in% dicionario[, "codNeg"]){
-            firm <- substr(firm, 1, 4)
-            especificacao <- "codNeg"
-          }
-      }
-      
-      if ( ! exists("especificacao")) {
-        
-        return("We do not found the balance sheets of the selected firm.")
-      } else {
-        
-        if (especificacao == "CodigoCvm") {
-          x <- which(dicionario[, especificacao] == as.numeric(firm))
-          x <- max(x)
-        } else {
-          x <- which(dicionario[, especificacao] == firm)
-          x <- max(x)
-          firm <- dicionario[x, "CodigoCvm"]  
-        }
-        
-        nome <- paste(dicionario[x, "codNeg"], sep=".")
-        if (nome == "NA" | is.na(nome))
-          nome <- paste("CVM", dicionario[x, "CodigoCvm"], sep=".")
-        
-        dest <- paste0(tempdir(), "\\omni\\", firm)
-        if(file.exists(dest)) {
-          tfile <- file.info(dest)$mtime
-          tupdate <- strsplit(as.character(Sys.time()), " ")[[1]][1]
-          tupdate <- as.POSIXct(paste(tupdate, "22:00:00"))
-          if(tfile <= tupdate & Sys.time() >= tupdate) {
-            link <- paste0("https://dl.dropboxusercontent.com/s/",
-                           balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, ".csv?dl=0")
-            download.file(link, destfile = dist, mode = "wb", quiet = T)
-          }
-          rm(tfile, tupdate)
-        } else {  
-          link <- paste0("https://dl.dropboxusercontent.com/s/",
-                         balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, ".csv?dl=0")
-          download.file(link, destfile = dest, mode = "wb", quiet = T)
-        }
-        
-        x <- readRDS(dest)
-        
-        if( ! is.null(quarter)) {
-          
-          x <- x[, which(colnames(x) == "V1") : ncol(x)]
-          
-          if(any(substr(x[, "V6"], 1, 7) == quarter)) {
-            
-            x <- x[c(1 : 3, which(substr(x[, "V6"], 1, 7) == quarter)), ]
-            x <- x[, x[4, ] != ""]
-            x <- t(x)
-            
-            rownames(x) <- NULL
-            colnames(x) <- c("kind of information", "id of account", "name of account", "Value")
-            x[x[, 1] == "-", 1] <- "firm's basic information"
-            x[x[, 1] == "1", 1] <- "Individual Result"
-            x[x[, 1] == "2", 1] <- "Consolidated Result"
-            
-          } else {
-            
-            x <- substr(x[ - c(1 : 3), "V6"], 1, 7)
-            print("This specified quarter isn't in our data")
-            print("Currently the quarters available are the periods below:")
-            print(paste(paste(head(x, 4), collapse = ", "), "...",
-                        paste(tail(x, 4), collapse = ", "), sep = ", "))
-            
-            rm(x)
-            return(invisible(NULL))
-            break
-          }
-          
-        } else {
-          x <- x[, 1 : (which(colnames(x) == "V1") - 1)]
-          x <- x[1 : (nrow(x) - 3), ]
-        }
-        return(x)
-      }
-    })
+    teste <- get.fin.stat(firms, quarter = quarter, envir = envir)
     
     x = misspecified = NULL
     for(i in seq_along(teste)) {
@@ -897,6 +918,14 @@ getBalanceSheet <- function(firms, quarter = NULL) {
     return(x)
   }
 }
+
+getBalanceSheet <- function(firms, quarter = NULL) {
+  
+}
+
+
+
+
 
 info.search <- function(info = "", ...) {
   # This function searchs about the firms and their shares and derivatives
