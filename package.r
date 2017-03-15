@@ -15,6 +15,7 @@ get.files <- function(link) {
   if(file.exists(paste0(tempdir(), "\\omni\\", link, ".txt"))) {
     file <- read.table(paste0(tempdir(), "\\omni\\", link, ".txt"),
                        header = T, stringsAsFactors = F)
+    
   } else {
     links <- data.frame(
       dicionariocompleto = "https://dl.dropboxusercontent.com/s/sqqhn6d7g5vnhxf/dicionariocompleto.txt?dl=0",
@@ -29,6 +30,8 @@ get.files <- function(link) {
     file <- read.table(url(links[link][[1]]), header = T, stringsAsFactors = F)
     write.table(file, paste0(tempdir(), "\\omni\\", link, ".txt"), row.names = F)
   }
+  
+  
   closeAllConnections()
   return(file)
 }
@@ -55,7 +58,7 @@ get.shares <- function(Shares, envir = NULL) {
     } else {
       
       t <- NULL
-      while( ! is.data.frame(t) ) {
+      while( ! is.data.frame(t)) {
         dest <- paste0(tempdir(), "\\omni\\", share)
         if(file.exists(dest)) {
           tfile <- file.info(dest)$mtime
@@ -73,7 +76,6 @@ get.shares <- function(Shares, envir = NULL) {
         }
         t <- try(x <- readRDS(dest), silent = T)
         if(class(t) == "try-error") unlink(dest)
-        
       }
       rm(t)
       
@@ -95,12 +97,45 @@ get.shares <- function(Shares, envir = NULL) {
   
   return(teste)
 }
-get.fin.stat <- function(firms, quarter = NULL, envir = NULL) {
+get.fin.stat <- function(firms, quarter = NULL) {
+  
+  if( ! is.null(quarter) & length(firms) > 1) {
+    quarter <<- NULL
+    warning("Argument quarter is not applied when there is more than one code.")
+  }
   
   dicionario <- get.files("dicionariobruto")
   sharelinks <- get.files("linkscotacoes")
   dic2 <- get.files("linkseventos")
   balancos <- get.files("linksbalancos")
+  
+  if("all" %in% firms) {
+    firms <- sort(c(firms[firms != "all"], unique(dicionario[, 1])))
+  }
+  
+  if(all(firms %in% 3)) {
+    warning("The CVM code 3 is a example, This firm actually does not exists.")
+    return(NULL)
+  } else {
+    firms <- firms[firms != 3]
+  }
+  
+  envir <- NULL
+  if(length(firms) > 20) {
+    
+    cat("It can take a while.\n")
+    
+    progresso <- 0 : 10
+    div <- 6
+    envir <- environment()
+    
+    progresso <- paste(paste0("", progresso * (100 / max(progresso)), "% "),
+                       collapse = paste0(rep("| ", div), collapse = ""))
+    progresso <- strsplit(progresso, " ")[[1]]
+    prog.bar <- (1 : length(progresso)) / length(progresso)
+    prog.bar <- prog.bar - min(prog.bar)
+    prog.bar <- prog.bar / max(prog.bar)
+  }
   
   fin.stat <- lapply(firms, function(firm) {
     
@@ -108,13 +143,11 @@ get.fin.stat <- function(firms, quarter = NULL, envir = NULL) {
       prog.bar <- get("prog.bar", envir = envir)
       progresso <- get("progresso", envir = envir)
     }
-    
     if(exists("prog.bar")) {
       x <- c(which(firms == firm) - (1 : 0)) / length(firms)
       cat(paste(progresso[prog.bar >= x[1] & prog.bar < x[2]], collapse = ""))
       if(firm == tail(firms, 1)) cat("100%\n")
     }
-    
     if ( ! exists("especificacao")) {
       if (nchar(firm) <= 6) {
         if ( ! any ( ! (strsplit(as.character(firm), "")[[1]] %in% 0:9))) {
@@ -122,7 +155,6 @@ get.fin.stat <- function(firms, quarter = NULL, envir = NULL) {
         }
       }
     }
-    
     if ( ! exists("especificacao")) {
       x <- which(strsplit(firm, "")[[1]] %in% c(".", "/", "-"))
       if (length(x) > 0){
@@ -136,12 +168,10 @@ get.fin.stat <- function(firms, quarter = NULL, envir = NULL) {
       }
       rm(x)
     }
-    
     if ( ! exists("especificacao")) {
       if (firm %in% dicionario[,"NomeRazaoSocial"])
         especificacao <- "NomeRazaoSocial"
     }
-    
     if ( ! exists("especificacao")) {
       if(all(strsplit(substr(firm, 1, 4), "")[[1]] %in% LETTERS))
         if (substr(firm, 1, 4) %in% dicionario[, "codNeg"]){
@@ -149,11 +179,9 @@ get.fin.stat <- function(firms, quarter = NULL, envir = NULL) {
           especificacao <- "codNeg"
         }
     }
-    
     if ( ! exists("especificacao")) {
       return("We do not found the balance sheets of the selected firm.")
     } else {
-      
       if (especificacao == "CodigoCvm") {
         x <- which(dicionario[, especificacao] == as.numeric(firm))
         x <- max(x)
@@ -162,12 +190,11 @@ get.fin.stat <- function(firms, quarter = NULL, envir = NULL) {
         x <- max(x)
         firm <- dicionario[x, "CodigoCvm"]  
       }
-      
       nome <- paste(dicionario[x, "codNeg"], sep=".")
       if (nome == "NA" | is.na(nome))
         nome <- paste("CVM", dicionario[x, "CodigoCvm"], sep=".")
-      
       dest <- paste0(tempdir(), "\\omni\\", firm)
+      x <- NULL
       if(file.exists(dest)) {
         tfile <- file.info(dest)$mtime
         tupdate <- strsplit(as.character(Sys.time()), " ")[[1]][1]
@@ -183,9 +210,17 @@ get.fin.stat <- function(firms, quarter = NULL, envir = NULL) {
                        balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, ".csv?dl=0")
         download.file(link, destfile = dest, mode = "wb", quiet = T)
       }
-      
-      x <- readRDS(dest)
-      
+      try(x <- readRDS(dest), silent = T)
+      if(is.null(x))
+        if( ! system(paste("ping", "www.dropbox.com"), show.output.on.console = F)) {  
+          link <- paste0("https://dl.dropboxusercontent.com/s/",
+                         balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, ".csv?dl=0")
+          download.file(link, destfile = dest, mode = "wb", quiet = T)
+          try(x <- readRDS(dest), silent = T)
+        } else {
+          warning("Problems in the connection!")
+          return(NULL)
+        }
       if( ! is.null(quarter)) {
         
         x <- x[, which(colnames(x) == "V1") : ncol(x)]
@@ -226,7 +261,7 @@ get.fin.stat <- function(firms, quarter = NULL, envir = NULL) {
   return(fin.stat)
 }
 
-# Package functions:
+# Package principal functions:
 
 getPrices <- function(shares,
                       info = "simplified", value = "Close", fill = NA) {
@@ -453,7 +488,6 @@ getPrices <- function(shares,
   }
   
 }
-
 getAdjPrices <- function(shares,
                          by = "all", subscription = "rational",
                          info = "simplified", value = "Return", fill = NA) {
@@ -539,6 +573,10 @@ getAdjPrices <- function(shares,
       return(NULL)
       break
     }
+    if( ! as.numeric(substr(share, 5, 5)) %in% 3 : 8) {
+      return(NULL)
+      break
+    }
     
     if(length(matriz.ajuste) > 1)
       stop("VERIFICAR FUNCAO DE CORRECAO DOS RETORNOS")
@@ -610,7 +648,7 @@ getAdjPrices <- function(shares,
     
     share <- get.shares(share, envir = envir)[[1]]
     
-    if( ! is.null(share)) {
+    if( ! is.null(share) & ! is.character(share)) {
       colnames(share)[c(1, 3)] <- c("Date", "NegCode")
       base <- as.matrix(share[, c("Date", "NegCode")])
       share <- as.xts(share[, - 1], order.by = as.Date(share[, "Date"]))
@@ -675,125 +713,131 @@ getAdjPrices <- function(shares,
     
   })
   
-  names(teste) <- shares
-  x = misspecified = NULL
   if(info == "single")
     for(i in seq_along(teste))
-      if(any(duplicated(teste[[i]][, "Date"]))) {
-        warning("Some of the assets belongs to the forward market or they have a duplicated date.
-                Due this the output is goind to be a data.frame.")
-        info <- "simplified"
-        break
-      }
-  if(info == "single") {
-    for(i in seq_along(teste)) {
-      if(exists("prog.bar")) {
-        if(names(teste)[1] == shares[[1]]) cat("Progress of aggregation: \n")
-        P <- c(which(shares == names(teste)[1]) - (1 : 0)) / length(shares)
-        cat(paste(progresso[prog.bar >= P[1] & prog.bar < P[2]], collapse = ""))
-        if(names(teste)[1] == tail(shares, 1)) cat("100%\n")
-      }
-      if(is.null(dim(teste[[1]]))) {
-        misspecified <- c(misspecified, names(teste)[1])
-      } else {
-        share <- teste[[1]]
-        
-        if(value %in% colnames(share)) {
-          share <- xts(share[, value], order.by = as.Date(share$Date))
+      if(is.data.frame(teste[[i]]))
+        if(any(duplicated(teste[[i]][, "Date"]))) {
+          warning("Some of the assets belongs to the forward market or they have a duplicated date.
+                  Due this the output is goind to be a data.frame.")
+          info <- "simplified"
+          break
+        }
+  
+  names(teste) <- shares
+  x = misspecified = NULL
+  
+  if( ! (is.null(unlist(teste)))) {
+    if(info == "single") {
+      for(i in seq_along(teste)) {
+        if(exists("prog.bar")) {
+          if(names(teste)[1] == shares[[1]]) cat("Progress of aggregation: \n")
+          P <- c(which(shares == names(teste)[1]) - (1 : 0)) / length(shares)
+          cat(paste(progresso[prog.bar >= P[1] & prog.bar < P[2]], collapse = ""))
+          if(names(teste)[1] == tail(shares, 1)) cat("100%\n")
+        }
+        if(is.null(dim(teste[[1]]))) {
+          misspecified <- c(misspecified, names(teste)[1])
         } else {
-          warning(paste("The parameter value was misspecified. One of these must be selected:",
-                        paste(colnames(share)[ - 2], collapse = ", ") ))
-          return()
-        }
-        
-        x <- cbind(x, share)
-        colnames(x)[ncol(x)] <- shares[[i]]
-        rm(share)
-      }
-      
-      teste <- teste[ - 1]
-    }
-    
-    if( ! is.na(fill)) {
-      if(fill == "last") {
-        for(i in colnames(x)) {
-          if(value == "Return") {
-            t <- is.na(x[, i])
-            t.1 <- which( ! t)
-            if(length(t.1) == 0) next
-            t.1 <- c(head(t.1, 1), tail(t.1, 1))
-            t <- which(t)
-            t <- t[t > t.1[1] & t < t.1[2]]
-            x[t, i] <- 1
+          share <- teste[[1]]
+          
+          if(value %in% colnames(share)) {
+            share <- xts(share[, value], order.by = as.Date(share$Date))
           } else {
-            t <- which(is.na(x[, i]))
-            t.1 <- c(which((t[-1] - t[ - length(t)] > 1)), length(t)) + 1
-            
-            for(j in seq_along(t.1))
-              if(t[max(t.1[j - 1], 1)] - 1 != 0)
-                x[t[max(t.1[j - 1], 1)] : t[t.1[j] - 1], i] <- x[t[max(t.1[j - 1], 1)] - 1, i]
-          }
-        }
-      }
-      if(fill == "drop") {
-        if(value == "Return") {
-          na <- apply(x, 1, function(i) any(is.na(i)))
-          if( ! all(na))
-            x <- x[min(which( ! na)) : max(which( ! na)), ]
-          na <- apply(x, 1, function(i) any(is.na(i)))
-          if(nrow(x[ ! na, ]) > 0) {
-            na <- sort(which(na), decreasing = T)
-            for(i in na) {
-              x[i + 1, ] <- apply(x[i : (i + 1)], 2, function(j) prod(as.numeric(j), na.rm = T))
-              x <- x[ - i, ]
-            }
-            rm(i)
-          } else {
-            x <- x[ ! na, ]
+            warning(paste("The parameter value was misspecified. One of these must be selected:",
+                          paste(colnames(share)[ - 2], collapse = ", ") ))
+            return()
           }
           
-        } else {
-          na <- apply(x, 1, function(i) any(is.na(i)))
-          x <- x[ ! na, ]
+          x <- cbind(x, share)
+          colnames(x)[ncol(x)] <- shares[[i]]
+          rm(share)
         }
-        rm(na)
+        
+        teste <- teste[ - 1]
+      }
+      
+      if( ! is.na(fill)) {
+        if(fill == "last") {
+          for(i in colnames(x)) {
+            if(value == "Return") {
+              t <- is.na(x[, i])
+              t.1 <- which( ! t)
+              if(length(t.1) == 0) next
+              t.1 <- c(head(t.1, 1), tail(t.1, 1))
+              t <- which(t)
+              t <- t[t > t.1[1] & t < t.1[2]]
+              x[t, i] <- 1
+            } else {
+              t <- which(is.na(x[, i]))
+              if(length(t) != 0) {
+                t.1 <- c(which((t[-1] - t[ - length(t)] > 1)), length(t)) + 1
+                
+                for(j in seq_along(t.1))
+                  if(t[max(t.1[j - 1], 1)] - 1 != 0)
+                    x[t[max(t.1[j - 1], 1)] : t[t.1[j] - 1], i] <- x[t[max(t.1[j - 1], 1)] - 1, i]
+              }
+            }
+          }
+        }
+        if(fill == "drop") {
+          if(value == "Return") {
+            na <- apply(x, 1, function(i) any(is.na(i)))
+            if( ! all(na))
+              x <- x[min(which( ! na)) : max(which( ! na)), ]
+            na <- apply(x, 1, function(i) any(is.na(i)))
+            if(nrow(x[ ! na, ]) > 0) {
+              na <- sort(which(na), decreasing = T)
+              for(i in na) {
+                x[i + 1, ] <- apply(x[i : (i + 1)], 2, function(j) prod(as.numeric(j), na.rm = T))
+                x <- x[ - i, ]
+              }
+              rm(i)
+            } else {
+              x <- x[ ! na, ]
+            }
+            
+          } else {
+            na <- apply(x, 1, function(i) any(is.na(i)))
+            x <- x[ ! na, ]
+          }
+          rm(na)
+        }
       }
     }
-    
-  }
-  if(info %in% c("full", "simplified")) {
-    for(i in seq_along(teste)) {
-      
-      if(exists("prog.bar")) {
-        if(names(teste)[1] == shares[[1]]) cat("Progress of aggregation: \n")
-        P <- c(which(shares == names(teste)[1]) - (1 : 0)) / length(shares)
-        cat(paste(progresso[prog.bar >= P[1] & prog.bar < P[2]], collapse = ""))
-        if(names(teste)[1] == tail(shares, 1)) cat("100%\n")
+    if(info %in% c("full", "simplified")) {
+      for(i in seq_along(teste)) {
+        
+        if(exists("prog.bar")) {
+          if(names(teste)[1] == shares[[1]]) cat("Progress of aggregation: \n")
+          P <- c(which(shares == names(teste)[1]) - (1 : 0)) / length(shares)
+          cat(paste(progresso[prog.bar >= P[1] & prog.bar < P[2]], collapse = ""))
+          if(names(teste)[1] == tail(shares, 1)) cat("100%\n")
+        }
+        if(is.null(dim(teste[[1]]))) { 
+          misspecified <- c(misspecified, shares[[i]])
+        } else {
+          share <- teste[[1]]
+          share <- cbind(NegCode = share[, "NegCode"], Date = share[, "Date"],
+                         DeadLine = share[, "PRAZOT"], ExpirDate = share[, "DATVEN"],
+                         share[, - which(colnames(share) %in%
+                                           c("NegCode", "Date", "PRAZOT", "DATVEN"))])
+          rownames(share) <- NULL
+          x <- rbind(x, share)
+          rm(share)
+        }
+        teste <- teste[ - 1]
+      }  
+      if(info == "simplified") {
+        complete <- 
+          which(colnames(x) %in% c("NegCode", "Date", "NOMRES", "ESPECI",
+                                   "Open", "Close", "High", "Low", "Mean", "Bid", "Ask",
+                                   "Return", "QuaTot"))
+        
+        complete <- sort(unique(c(complete, which(unlist(lapply(names(x), function(i)
+          length(unique(x[, i])) != 1))))))
+        
+        x <- x[, complete]
       }
-      if(is.null(dim(teste[[1]]))) { 
-        misspecified <- c(misspecified, shares[[i]])
-      } else {
-        share <- teste[[1]]
-        share <- cbind(NegCode = share[, "NegCode"], Date = share[, "Date"],
-                       DeadLine = share[, "PRAZOT"], ExpirDate = share[, "DATVEN"],
-                       share[, - which(colnames(share) %in%
-                                         c("NegCode", "Date", "PRAZOT", "DATVEN"))])
-        rownames(share) <- NULL
-        x <- rbind(x, share)
-        rm(share)
-      }
-      teste <- teste[ - 1]
-    }  
-    if(info == "simplified") {
-      complete <- 
-        which(colnames(x) %in% c("NegCode", "Date", "NOMRES", "ESPECI",
-                                 "Open", "Close", "High", "Low", "Mean", "Bid", "Ask",
-                                 "Return", "QuaTot"))
-      
-      complete <- sort(unique(c(complete, which(unlist(lapply(names(x), function(i)
-        length(unique(x[, i])) != 1))))))
-      
-      x <- x[, complete]
     }
   }
   
@@ -822,7 +866,6 @@ getAdjPrices <- function(shares,
   
   return(x)
 }
-
 getFinancialStatements <- function(firms, quarter = NULL) {
   # This functions load to R a table with the value of the most important accounts of the specified firm.
   # Arguments:
@@ -847,42 +890,7 @@ getFinancialStatements <- function(firms, quarter = NULL) {
     warning ("You need to chose at list a firm.")
   } else {
     
-    if( ! is.null(quarter) & length(firms) > 1) {
-      quarter <- NULL
-      warning("Argument quarter is not applied when there is more than one code.")
-    }
-    
-    dicionario <- get.files("dicionariobruto")
-
-    if("all" %in% firms) {
-      firms <- sort(c(firms[firms != "all"], unique(dicionario[, 1])))
-    }
-    
-    if(all(firms %in% 3)) {
-      warning("The CVM code 3 is a example, This firm actually does not exists.")
-      return(NULL)
-    } else {
-      firms <- firms[firms != 3]
-    }
-    
-    envir <- NULL
-    if(length(firms) > 20) {
-      
-      cat("It can take a while.\n")
-      
-      progresso <- 0 : 10
-      div <- 6
-      envir <- environment()
-      
-      progresso <- paste(paste0("", progresso * (100 / max(progresso)), "% "),
-                         collapse = paste0(rep("| ", div), collapse = ""))
-      progresso <- strsplit(progresso, " ")[[1]]
-      prog.bar <- (1 : length(progresso)) / length(progresso)
-      prog.bar <- prog.bar - min(prog.bar)
-      prog.bar <- prog.bar / max(prog.bar)
-    }
-    
-    teste <- get.fin.stat(firms, quarter = quarter, envir = envir)
+    teste <- get.fin.stat(firms, quarter)
     
     x = misspecified = NULL
     for(i in seq_along(teste)) {
@@ -920,12 +928,116 @@ getFinancialStatements <- function(firms, quarter = NULL) {
 }
 
 getBalanceSheet <- function(firms, quarter = NULL) {
-  
+  if (missingArg(firms)) {
+    warning ("You need to chose at list a firm.")
+  } else {
+    FIRMS <- get.fin.stat(firms, quarter)
+    
+    x = misspecified = NULL
+    for(i in seq_along(FIRMS)) {
+      if(is.null(dim(FIRMS[[i]]))) {
+        misspecified <- c(misspecified, firms[[i]])
+      } else {
+        FIRM <- FIRMS[[i]]
+        if(is.null(quarter)) {
+          col <- gsub(".individual|.consolidado", "", names(FIRM))
+          p1 <- which(col == "ativo.total")
+          p2 <- which(col == "resultado")
+          x <- rbind(x, FIRM[, c("CodigoCvm", "DataReferenciaDocumento",
+                                 names(FIRM)[c(p1[[1]] : (p2[[1]] - 1), p1[[2]] : (p2[[2]] - 1))])])
+          rm(p1, p2, FIRM, col)
+        } else {
+          x <- FIRM[c(which(FIRM[, "name of account"] %in% c("CodigoCvm", "DataReferenciaDocumento")),
+                      which(substr(FIRM[, "id of account"], 1, 1) %in% c(1, 2))), ]
+        }
+      }
+    }
+    
+    if(is.null(quarter)) {
+      x[, "CodigoCvm"] <- as.numeric(x[, "CodigoCvm"])
+      x[, "DataReferenciaDocumento"] <- as.Date(x[, "DataReferenciaDocumento"])
+      x[, 3 : ncol(x)] <- as.numeric(as.matrix(x[, 3 : ncol(x)]))
+      x <- x[, unlist(apply(x, 2, function(i) ! all(is.na(i))))]
+    }
+    
+    misspecified <- unique(misspecified)
+    
+    if( ! is.null(misspecified)) {
+      if(length(misspecified) > 1) {
+        miss <- paste(misspecified[ - length(misspecified)], collapse = ", ")
+        miss <- paste(miss, misspecified[length(misspecified)], sep = " and ")
+      } else {
+        miss <- misspecified
+      }
+      
+      
+      i = sum(1, length(misspecified) > 1)
+      miss <- paste(miss, c("is", "are")[i], "misspecified or",
+                    c("this firm does", "these firms do")[i], "not exist.")
+      warning(miss)
+      rm(i, miss)
+    }
+    rm(misspecified)
+    
+    return(x)
+  }
 }
 
-
-
-
+getIncomeStatements <- function(firms, quarter = NULL) {
+  if (missingArg(firms)) {
+    warning ("You need to chose at list a firm.")
+  } else {
+    FIRMS <- get.fin.stat(firms, quarter)
+    
+    x = misspecified = NULL
+    for(i in seq_along(FIRMS)) {
+      if(is.null(dim(FIRMS[[i]]))) {
+        misspecified <- c(misspecified, firms[[i]])
+      } else {
+        FIRM <- FIRMS[[i]]
+        if(is.null(quarter)) {
+          col <- gsub(".individual|.consolidado", "", names(FIRM))
+          p1 <- which(col == "ativo.total")
+          p2 <- which(col == "resultado")
+          x <- rbind(x, FIRM[, c("CodigoCvm", "DataReferenciaDocumento",
+                                 names(FIRM)[c(p1[[1]] : (p2[[1]] - 1), p1[[2]] : (p2[[2]] - 1))])])
+          rm(p1, p2, FIRM, col)
+        } else {
+          x <- FIRM[c(which(FIRM[, "name of account"] %in% c("CodigoCvm", "DataReferenciaDocumento")),
+                      which(substr(FIRM[, "id of account"], 1, 1) %in% c(1, 2))), ]
+        }
+      }
+    }
+    
+    if(is.null(quarter)) {
+      x[, "CodigoCvm"] <- as.numeric(x[, "CodigoCvm"])
+      x[, "DataReferenciaDocumento"] <- as.Date(x[, "DataReferenciaDocumento"])
+      x[, 3 : ncol(x)] <- as.numeric(as.matrix(x[, 3 : ncol(x)]))
+      x <- x[, unlist(apply(x, 2, function(i) ! all(is.na(i))))]
+    }
+    
+    misspecified <- unique(misspecified)
+    
+    if( ! is.null(misspecified)) {
+      if(length(misspecified) > 1) {
+        miss <- paste(misspecified[ - length(misspecified)], collapse = ", ")
+        miss <- paste(miss, misspecified[length(misspecified)], sep = " and ")
+      } else {
+        miss <- misspecified
+      }
+      
+      
+      i = sum(1, length(misspecified) > 1)
+      miss <- paste(miss, c("is", "are")[i], "misspecified or",
+                    c("this firm does", "these firms do")[i], "not exist.")
+      warning(miss)
+      rm(i, miss)
+    }
+    rm(misspecified)
+    
+    return(x)
+  }
+}
 
 info.search <- function(info = "", ...) {
   # This function searchs about the firms and their shares and derivatives
