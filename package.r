@@ -997,14 +997,14 @@ getIncomeStatements <- function(firms, quarter = NULL) {
         FIRM <- FIRMS[[i]]
         if(is.null(quarter)) {
           col <- gsub(".individual|.consolidado", "", names(FIRM))
-          p1 <- which(col == "ativo.total")
-          p2 <- which(col == "resultado")
+          p1 <- which(col == "resultado")
+          p2 <- which(col == "resultado.abrangente")
           x <- rbind(x, FIRM[, c("CodigoCvm", "DataReferenciaDocumento",
                                  names(FIRM)[c(p1[[1]] : (p2[[1]] - 1), p1[[2]] : (p2[[2]] - 1))])])
           rm(p1, p2, FIRM, col)
         } else {
           x <- FIRM[c(which(FIRM[, "name of account"] %in% c("CodigoCvm", "DataReferenciaDocumento")),
-                      which(substr(FIRM[, "id of account"], 1, 1) %in% c(1, 2))), ]
+                      which(substr(FIRM[, "id of account"], 1, 1) %in% 3)), ]
         }
       }
     }
