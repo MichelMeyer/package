@@ -100,7 +100,7 @@ get.shares <- function(Shares, envir = NULL) {
 get.fin.stat <- function(firms, quarter = NULL) {
   
   if( ! is.null(quarter) & length(firms) > 1) {
-    quarter <<- NULL
+    quarter <<- quarter <- NULL
     warning("Argument quarter is not applied when there is more than one code.")
   }
   
@@ -138,7 +138,6 @@ get.fin.stat <- function(firms, quarter = NULL) {
   }
   
   fin.stat <- lapply(firms, function(firm) {
-    
     if( ! is.null(envir)) {
       prog.bar <- get("prog.bar", envir = envir)
       progresso <- get("progresso", envir = envir)
@@ -202,7 +201,7 @@ get.fin.stat <- function(firms, quarter = NULL) {
         if(tfile <= tupdate & Sys.time() >= tupdate) {
           link <- paste0("https://dl.dropboxusercontent.com/s/",
                          balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, ".csv?dl=0")
-          download.file(link, destfile = dist, mode = "wb", quiet = T)
+          download.file(link, destfile = dest, mode = "wb", quiet = T)
         }
         rm(tfile, tupdate)
       } else {  
@@ -660,8 +659,8 @@ getAdjPrices <- function(shares,
         x <- matriz.ajuste[x, ]
         x <- t(data.frame(lapply(unique(x[, "data"]), function(z) {
           cisao <- ((1 / (1 - sum(1 - (1 / (x[x[, "data"] %in% z &
-                                                x[, "evento"] == "Cisão", "fator"]))))) - 1)
-          comum <- (as.numeric(x[x[, "data"] %in% z & x[, "evento"] != "Cisão", "fator"]) - 1)
+                                                x[, "evento"] == "Cisao", "fator"]))))) - 1)
+          comum <- (as.numeric(x[x[, "data"] %in% z & x[, "evento"] != "Cisao", "fator"]) - 1)
           z <- t(data.frame(data = z, fator = sum(cisao, comum) + 1, stringsAsFactors = F))
           return(z)
         }), stringsAsFactors = F))
@@ -983,7 +982,7 @@ getBalanceSheet <- function(firms, quarter = NULL) {
   }
 }
 
-getIncomeStatements <- function(firms, quarter = NULL) {
+getIncomeStatements <- function(firms, quarter = NULL, adjust = F) {
   if (missingArg(firms)) {
     warning ("You need to chose at list a firm.")
   } else {
@@ -999,21 +998,61 @@ getIncomeStatements <- function(firms, quarter = NULL) {
           col <- gsub(".individual|.consolidado", "", names(FIRM))
           p1 <- which(col == "resultado")
           p2 <- which(col == "resultado.abrangente")
-          x <- rbind(x, FIRM[, c("CodigoCvm", "DataReferenciaDocumento",
+          x <- rbind(x, FIRM[, c("CodigoCvm", "DataReferenciaDocumento", "TipoDemonstracaoFinanceira",
                                  names(FIRM)[c(p1[[1]] : (p2[[1]] - 1), p1[[2]] : (p2[[2]] - 1))])])
           rm(p1, p2, FIRM, col)
         } else {
-          x <- FIRM[c(which(FIRM[, "name of account"] %in% c("CodigoCvm", "DataReferenciaDocumento")),
+          x <- FIRM[c(which(FIRM[, "name of account"] %in% c("CodigoCvm", "DataReferenciaDocumento", "TipoDemonstracaoFinanceira")),
                       which(substr(FIRM[, "id of account"], 1, 1) %in% 3)), ]
         }
       }
     }
+    rm(FIRMS)
     
     if(is.null(quarter)) {
       x[, "CodigoCvm"] <- as.numeric(x[, "CodigoCvm"])
       x[, "DataReferenciaDocumento"] <- as.Date(x[, "DataReferenciaDocumento"])
-      x[, 3 : ncol(x)] <- as.numeric(as.matrix(x[, 3 : ncol(x)]))
+      x[, 4 : ncol(x)] <- as.numeric(as.matrix(x[, 4 : ncol(x)]))
       x <- x[, unlist(apply(x, 2, function(i) ! all(is.na(i))))]
+      
+      if(adjust) {
+        quarters <- paste(sort(rep(1997 : as.numeric(substr(Sys.time(), 1, 4)), 4)),
+                          c("03", "06", "09", "12"), sep = "-")
+        x <- lapply(unique(x[, "CodigoCvm"]), function(i) return(x[x[, "CodigoCvm"] == i, ]))
+        x <- lapply(x, function(i) {
+            for(l in 1 : nrow(i)) {
+              if(i[l, "TipoDemonstracaoFinanceira"] == "ITR") {
+                i[l, "TipoDemonstracaoFinanceira"] <- T
+                next
+              }
+              q <- quarters %in% substr(i[l, "DataReferenciaDocumento"], 1, 7)
+              f <- unlist(lapply(quarters[which(q) - c(3 : 1)], function(p) {
+                f <- which(substr(i[, "DataReferenciaDocumento"], 1, 7) == p)
+                if(length(f) == 0) {
+                  return(NULL)
+                } else {
+                  return(max(f))
+                }
+              }))
+              if(length(f) < 3) {
+                i[l, "TipoDemonstracaoFinanceira"] <- F
+                next
+              } else {
+                i[l, 4 : ncol(i)] <- i[l, 4 : ncol(i)] - colSums(i[f, 4 : ncol(i)])
+                i[l, "TipoDemonstracaoFinanceira"] <- T
+              }
+            }
+            rm(q, l, f)
+            return(i)
+          })
+        FIRMS <- x
+        x <- NULL
+        for(i in seq_along(FIRMS))
+          x <- rbind(x, FIRMS[[i]])
+        x <- x[(x[, "TipoDemonstracaoFinanceira"]) == TRUE, c(1 : 2, 4 : ncol(x))]
+        rm(quarters, FIRMS)
+      }
+      
     }
     
     misspecified <- unique(misspecified)

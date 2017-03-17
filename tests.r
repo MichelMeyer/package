@@ -1,7 +1,8 @@
 # Test some of the package's functions
 source("package.r")
 
-if( ! system(paste("ping", "www.dropbox.com"), show.output.on.console = F)) {
+if( ! system(paste("ping", "www.dropbox.com",
+                   ifelse(Sys.info()[["sysname"]] == "Windows", "", "-c 4")), show.output.on.console = F)) {
   
   # Time's mesuge.
   y <- system.time({
@@ -34,17 +35,17 @@ if( ! system(paste("ping", "www.dropbox.com"), show.output.on.console = F)) {
     if(all(dim(x) == c(3, 23)))
       if(all(round(x[, "Return"], 6) == c(1.060838, 0.975841, 1.001250))) tests$full = T
     
-    x <- getBalanceSheet("PETR", quarter = "2016-06")
+    x <- getFinancialStatements("PETR", quarter = "2016-06")
     if(all(dim(x) == c(692, 4)) & x[x[, "name of account"] == "patrimonio liquido", "Value"] == "271395000000")
       tests$balance.quarter.right <- T
     
-    x <- getBalanceSheet(c("PETR", "WEGE"), quarter = "2016-06")
+    x <- getFinancialStatements(c("PETR", "WEGE"), quarter = "2016-06")
     if(all(unique(x[, "CodigoCvm"]) == c("9512", "5410")) &
        all(x[x$DataReferenciaDocumento == "2016-09-30",
              "patrimonio.liquido.consolidado"] == c("262016000000", "5963354000")))
       tests$balance.quarter.wrong <- T
     
-    x <- getBalanceSheet("PETR", quarter = NULL)
+    x <- getFinancialStatements("PETR", quarter = NULL)
     if(all(unique(x[, "CodigoCvm"]) == c("9512")) &
        x[x$DataReferenciaDocumento == "2016-09-30",
          "patrimonio.liquido.consolidado"] == "262016000000") tests$balance.NULL <- T
@@ -56,7 +57,7 @@ if( ! system(paste("ping", "www.dropbox.com"), show.output.on.console = F)) {
       tests$all.adj.downloaded = T
     
     x2 <- NULL
-    try(x2 <- getBalanceSheet("all"))
+    try(x2 <- getFinancialStatements("all"))
     if( ! is.null(x2))
       tests$all.balances.downloaded = T  
   })
@@ -84,3 +85,6 @@ if( ! system(paste("ping", "www.dropbox.com"), show.output.on.console = F)) {
 } else {
   warning("Verify your connection!")
 }
+
+
+
