@@ -3,7 +3,7 @@ Type: Package
 Title: What the package does (short line)
 Version: 1.0
 Date: 2017-01-31
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Author: Michel Ricardo Meyer and Regis Augusto Ely
+Maintainer: Michel Ricardo Meyer <michel.ricardo.meyer@gmail.com>
+Description: Download the Security Price data and Financial Statements of the companies with shares traded on the BM&FBovespa.
+License: GNU GPL
