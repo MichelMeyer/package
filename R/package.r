@@ -362,15 +362,19 @@ getPrices <- function(shares,
     }
     teste <- get.shares(shares, envir)
     
-    x = misspecified = NULL
     if(info == "single")
       for(i in seq_along(teste))
-        if(any(duplicated(teste[[i]][, "DATAPREG"]))) {
-          warning("Some of the assets belongs to the forward market or they have a duplicated date.
-                  Due this the output is goind to be a data.frame.")
-          info <- "simplified"
-          break
-        }
+        if(is.data.frame(teste[[i]]))
+          if(any(duplicated(teste[[i]][, "DATAPREG"]))) {
+            warning("Some of the assets belongs to the forward market or they have a duplicated date.
+                    Due this the output is goind to be a data.frame.")
+            info <- "simplified"
+            break
+          }
+    
+    names(teste) <- shares
+    x = misspecified = NULL
+    
     if(info == "single") {
       for(i in seq_along(teste)) {    
         if(exists("prog.bar")) {
