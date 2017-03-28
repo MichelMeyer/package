@@ -817,31 +817,10 @@ getAdjPrices <- function(shares,
   return(x)
 }
 getFinancialStatements <- function(firms, quarter = NULL) {
-  # This functions load to R a table with the value of the most important accounts of the specified firm.
-  # Arguments:
-  #   firms: value that must have one of the values below:
-  #     CVM code: uses the CVM code to search for the firm.
-  #       Format: 123456.
-  #       Examples (Itau Unibanco): getBalancesheet(firm = 19348) or getBalancesheet(firm = 019348)
-  #     CNPJ: Search for the firm using their CNPJ (Cadastro Nacional de Pessoa Juridica - National Registry of Legal Person).
-  #       Format: '12.345.678/9012-34'
-  #       Example (Itau Unibanco): getBalancesheet(firm = '60.872.504/0001-23')
-  #     Negotiation code: Uses the Negotiation Code to find the firm's balance sheet.
-  #       Format: 'ABCD1'
-  #       Example (Itau Unibanco): getBalancesheet(firm = 'ITUB3')
-  #       P.S.: Inside the function, only the first four characters are used.
-  #     Obs.: You can use firms = "all" too.
-  #   quarter: If setted as NULL the function return a table with the principal accounts of
-  #            all balances, some of this accound were calculed to make easier the use of the data
-  #            The format to this parameter is: "yyyy-mm". Example,: "2016-12".
-  
-  
   if (missingArg(firms)) {
     warning ("You need to chose at list a firm.")
   } else {
-    
     teste <- get.fin.stat(firms, quarter)
-    
     x = misspecified = NULL
     for(i in seq_along(teste)) {
       if(is.null(dim(teste[[i]]))){
@@ -850,12 +829,9 @@ getFinancialStatements <- function(firms, quarter = NULL) {
         x <- rbind(x, teste[[i]])
       }
     }
-    
     if(is.null(quarter))
       x <- x[, c(3, 6, 1 : 2, 4 : 5, 7 : ncol(x))]
-    
     misspecified <- unique(misspecified)
-    
     if( ! is.null(misspecified)) {
       if(length(misspecified) > 1) {
         miss <- paste(misspecified[ - length(misspecified)], collapse = ", ")
@@ -863,8 +839,6 @@ getFinancialStatements <- function(firms, quarter = NULL) {
       } else {
         miss <- misspecified
       }
-      
-      
       i = sum(1, length(misspecified) > 1)
       miss <- paste(miss, c("is", "are")[i], "misspecified or",
                     c("this firm does", "these firms do")[i], "not exist.")
@@ -872,7 +846,6 @@ getFinancialStatements <- function(firms, quarter = NULL) {
       rm(i, miss)
     }
     rm(misspecified)
-    
     return(x)
   }
 }
@@ -1030,36 +1003,25 @@ getIncomeStatements <- function(firms, quarter = NULL, adjust = F) {
 }
 
 info.search <- function(info = "", ...) {
-  # This function searchs about the firms and their shares and derivatives
-  # Arguments:
-  #   info: any information about the firm or asset.
-  
   info <- toupper(info)
-  
   dicionario <- get.files("dicionariocompleto")
-  
   if(all(strsplit(as.character(info), "")[[1]] %in% as.character(0:9))) {
     x <- grep(info, dicionario$CodigoCvm)
   } else {
     x <- c(unlist(lapply( 2 : 3, function(j) grep(info, dicionario[, j]))),
            grep(substr(info, 1, 4), dicionario[, 4]))
   }
-  
   if(length(x) == 0) {
     return(NULL)
     break
   }
-  
   x <- sort(table(x), decreasing = T)
   dicionario <- dicionario[names(x), ]
-  
   x <- apply(dicionario, 1, function(dic) {
-    
-    x <- strsplit(strsplit(dic["INFORMACOES"], ";")[[1]], " = ")
-    
+    x <- strsplit(strsplit(dic["INFORMACOES"], ";")[[1]], " = ")    
     parte1 <- cbind(CVMCode = dic["CodigoCvm"],
                     CNPJ = paste0(strsplit(dic["CNPJ"], ";")[[1]], collapse = ""),
-                    SocialName = last(strsplit(dic["RazaoSocial"], "; ")[[1]]),
+                    SocialName = tail(strsplit(dic["RazaoSocial"], "; ")[[1]], 1),
                     NegotiationCode = paste(unlist(lapply(1 : length(x), function(j) x[[j]][1])),
                                             collapse = " "))
     
@@ -1086,9 +1048,7 @@ info.search <- function(info = "", ...) {
     return(parte)
     
   })
-  
   names(x) <- unlist(lapply(seq_along(x), function(i) strsplit(x[[i]][[1]][4], " ")[[1]][[1]]))
-  
   painel <- NULL
   for(i in seq_along(x))
     painel <- rbind(painel, x[[i]][[1]])
@@ -1107,4 +1067,3 @@ info.search <- function(info = "", ...) {
   return(invisible(x))
   
 }
-

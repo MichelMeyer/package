@@ -1,7 +1,7 @@
 \name{get.files}
 \alias{get.files}
 \title{
-This is a function for internal uses!
+Internal Function!
 }
 \usage{
 get.files(x)
