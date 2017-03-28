@@ -352,7 +352,7 @@ getPrices <- function(shares,
         } else {
           share <- teste[[1]]
           if(value %in% colnames(share)) {
-            share <- xts(share[, value], order.by = as.Date(share$DATAPREG))
+            share <- xts::xts(share[, value], order.by = as.Date(share$DATAPREG))
           } else {
             warning(paste("The parameter value was misspecified. One of these must be selected:",
                           paste(colnames(share)[ - 2], collapse = ", ") ))
@@ -598,7 +598,7 @@ getAdjPrices <- function(shares,
     if( ! is.null(share) & ! is.character(share)) {
       colnames(share)[c(1, 3)] <- c("Date", "NegCode")
       base <- as.matrix(share[, c("Date", "NegCode")])
-      share <- as.xts(share[, - 1], order.by = as.Date(share[, "Date"]))
+      share <- xts::as.xts(share[, - 1], order.by = as.Date(share[, "Date"]))
       
       if(nrow(matriz.ajuste) > 0)
         matriz.ajuste[which(regexec("Cisao", matriz.ajuste[, "evento"]) != "-1"), "evento"] <- "Cisao"
@@ -684,7 +684,7 @@ getAdjPrices <- function(shares,
           share <- teste[[1]]
           
           if(value %in% colnames(share)) {
-            share <- xts(share[, value], order.by = as.Date(share$Date))
+            share <- xts::xts(share[, value], order.by = as.Date(share$Date))
           } else {
             warning(paste("The parameter value was misspecified. One of these must be selected:",
                           paste(colnames(share)[ - 2], collapse = ", ") ))
