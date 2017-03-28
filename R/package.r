@@ -365,7 +365,7 @@ getPrices <- function(shares,
             if(is.null(x)) {
               x <- share
             } else {
-              t <- as.Date(intersect(index(x), index(share)))
+              t <- as.Date(intersect(zoo::index(x), zoo::index(share)))
               x <- cbind(x[t, ], share[t, ])
               rm(t)
             }
@@ -626,13 +626,13 @@ getAdjPrices <- function(shares,
       rm(x)
       
       matriz.ajuste <- 
-        matriz.ajuste[matriz.ajuste[, "data"] <= max(index(share)) &
-                        matriz.ajuste[, "data"] >= min(index(share)), ]
+        matriz.ajuste[matriz.ajuste[, "data"] <= max(zoo::index(share)) &
+                        matriz.ajuste[, "data"] >= min(zoo::index(share)), ]
       
       x <- c("Open", "Close", "High", "Low", "Mean", "Bid", "Ask", "Volume")
       
       for(i in 1 : nrow(matriz.ajuste)) {
-        p <- index(share) <= matriz.ajuste[i, "data"]    
+        p <- zoo::index(share) <= matriz.ajuste[i, "data"]    
         share[p, x] <- as.numeric(share[p, x]) / as.numeric(matriz.ajuste[i, "fator"])
       }
       share[, "Volume"] <- as.numeric(share[, "Volume"]) * as.numeric(share[, "FATCOT"])
