@@ -264,7 +264,7 @@ getPrices <- function(shares,
     warning ("You have to specify at list a share.")
   } else {
     
-    if(info %in% c("full", "simplified", "single")) {
+    if( ! info %in% c("full", "simplified", "single")) {
       print("verify if you wrote correctly the paramenter 'info'")
       return(NULL)
     }
@@ -390,7 +390,11 @@ getPrices <- function(shares,
             
             for(j in seq_along(t.1))
               if(t[max(t.1[j - 1], 1)] - 1 != 0)
-                x[t[max(t.1[j - 1], 1)] : t[t.1[j] - 1], i] <- x[t[max(t.1[j - 1], 1)] - 1, i]
+                if(value %in% c("TotNeg", "QuaTot", "Volume")) {
+                  x[t[max(t.1[j - 1], 1)] : t[t.1[j] - 1], i] <- 0
+                } else {
+                  x[t[max(t.1[j - 1], 1)] : t[t.1[j] - 1], i] <- x[t[max(t.1[j - 1], 1)] - 1, i]
+                }
           }
         }
       
@@ -461,40 +465,11 @@ getPrices <- function(shares,
 getAdjPrices <- function(shares,
                          by = "all", subscription = "rational",
                          info = "simplified", value = "Return", fill = NA) {
-  # This function has as output the adjusted share prices (Volume is not changed)
-  # Arguments:
-  #   shares: A vector with the names of the shares or
-  #           "all" to download shares with adjusted prices.
-  #   by: A vector with the corporate events must be used in the adjust.
-  #       Slipts and alterations in the factor of cotation are always adjusted.
-  #     all = It uses all the events.
-  #     Separately it's possible to specify in a vector a combination of these:
-  #     Dividend, Interest, Bonus shares, Subscription Right, Spinoff, Return of Capital.
-  #   subscription: There are three alternatives of specification for this argument:
-  #     rational = buy the share when the price of subscriptied share is cheaper than
-  #                the price of the share in the market
-  #     neverbuy = self explanatory
-  #     alwaysbuy = self explanatory
-  #   info:
-  #     full: returns a data.frame with the bovespa's quotation data.
-  #     simplified: returns a data.frame with the open, close, min, max, mean, bid and ask prices,
-  #            transactioned volume of the day and other informations that changed between the specified shares.
-  #     single: returns a xts object with a single column specified in paramenter value.
-  #   value: only used if info = "single".
-  #          The setted argument is "Return", but it can be changed at will.
-  #   fill: Only used in the same case that the value is used.
-  #         Some of the shares aren't negotiated every period, so this parameter set how must be filled
-  #         the missing values. The options are below:
-  #     last: uses the last negotiated day value to fill the gaps.
-  #     NA: fills with NAs.
-  #     drop: Drop the days out of the time serie. Be carefull, the intersection of the time
-  #           series could be empty.
-  
   dicionario <- get.files("dicionariobruto")
   sharelinks <- get.files("linkscotacoes")
   dic2 <- get.files("linkseventos")
   
-  if(info %in% c("full", "simplified", "single")) {
+  if( ! info %in% c("full", "simplified", "single")) {
     print("verify if you wrote correctly the paramenter 'info'")
     return(NULL)
   }
@@ -665,10 +640,6 @@ getAdjPrices <- function(shares,
       }
       share[, "Volume"] <- as.numeric(share[, "Volume"]) * as.numeric(share[, "FATCOT"])
       share <- share[, - which(colnames(share) == "FATCOT")]
-      
-      
-      
-      
       share <- cbind(data.frame(share[, 1 : 13], stringsAsFactors = F), 
                      Return = as.numeric(c(NA, as.numeric(share[ - 1, "Close"]) /
                                                as.numeric(share[ - nrow(share), "Close"]))),
@@ -749,7 +720,11 @@ getAdjPrices <- function(shares,
                 
                 for(j in seq_along(t.1))
                   if(t[max(t.1[j - 1], 1)] - 1 != 0)
-                    x[t[max(t.1[j - 1], 1)] : t[t.1[j] - 1], i] <- x[t[max(t.1[j - 1], 1)] - 1, i]
+                    if(value %in% c("TotNeg", "QuaTot", "Volume")) {
+                      x[t[max(t.1[j - 1], 1)] : t[t.1[j] - 1], i] <- 0
+                    } else {
+                      x[t[max(t.1[j - 1], 1)] : t[t.1[j] - 1], i] <- x[t[max(t.1[j - 1], 1)] - 1, i]
+                    }
               }
             }
           }
