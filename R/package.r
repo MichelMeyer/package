@@ -308,15 +308,12 @@ getPrices <- function(shares,
       shares <- c(shares[ ! shares %in% "fractionary"],
                   strsplit(codbdi[codbdi[, 1] == 96, 3], " ")[[1]])
     shares <- sort(unique(shares))
-    
     envir <- NULL
     if(quiet == F & length(shares) > 20) {
-      
       cat("It can take a while.\n")
       envir <- environment()
       progresso <- 0 : 10
       div <- 6
-      
       progresso <- paste(paste0("", progresso * (100 / max(progresso)), "% "),
                          collapse = paste0(rep("| ", div), collapse = ""))
       progresso <- strsplit(progresso, " ")[[1]]
@@ -325,7 +322,6 @@ getPrices <- function(shares,
       prog.bar <- prog.bar / max(prog.bar)
     }
     teste <- get.shares(shares, envir)
-    
     if(info == "single")
       for(i in seq_along(teste))
         if(is.data.frame(teste[[i]]))
@@ -335,10 +331,8 @@ getPrices <- function(shares,
             info <- "simplified"
             break
           }
-    
     names(teste) <- shares
     x = misspecified = NULL
-    
     if(info == "single") {
       for(i in seq_along(teste)) {    
         if(exists("prog.bar")) {
@@ -358,7 +352,6 @@ getPrices <- function(shares,
                           paste(colnames(share)[ - 2], collapse = ", ") ))
             return()
           }
-          
           if(is.na(fill) | fill == "last") {
             x <- cbind(x, share)
           } else {
@@ -370,21 +363,16 @@ getPrices <- function(shares,
               rm(t)
             }
           }
-          
           colnames(x)[ncol(x)] <- shares[[i]]
-          
           rm(share)
         }
-        
         teste <- teste[ - 1]
       }
-      
       if( ! is.na(fill))
         if(fill == "last") {
           for(i in colnames(x)) {
             t <- which(is.na(x[, i]))
-            t.1 <- c(which((t[-1] - t[ - length(t)] > 1)), length(t)) + 1
-            
+            t.1 <- c(which((t[-1] - t[ - length(t)] > 1)), length(t)) + 1     
             for(j in seq_along(t.1))
               if(t[max(t.1[j - 1], 1)] - 1 != 0)
                 if(value %in% c("TotNeg", "QuaTot", "Volume")) {
