@@ -1,7 +1,4 @@
 
-if( ! "xts" %in% installed.packages()) install.packages("xts", dependencies = T)
-library(xts)
-
 # Internal functions:
 get.files <- function(link) {
   

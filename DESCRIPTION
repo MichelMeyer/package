@@ -7,3 +7,4 @@ Author: Michel Ricardo Meyer and Regis Augusto Ely
 Maintainer: Michel Ricardo Meyer <michel.ricardo.meyer@gmail.com>
 Description: Download the Security Price data and Financial Statements of the companies with shares traded on the BM&FBovespa.
 License: GNU GPL
+Imports: xts
