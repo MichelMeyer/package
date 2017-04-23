@@ -576,6 +576,7 @@ getAdjPrices <- function(shares,
           matriz.ajuste <- matriz.ajuste[ - x, ]
       }
       if(subscription == "neverbuy") {
+        if(length(x) > 0)
         matriz.ajuste <- matriz.ajuste[ - x, ]
       }
       rm(x)
