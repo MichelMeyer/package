@@ -1,1 +1,5 @@
 exportPattern("^[[:alpha:]]+")
+
+  importFrom("methods", "missingArg")
+  importFrom("utils", "download.file", "head", "read.csv2", "read.table",
+             "tail", "write.table")

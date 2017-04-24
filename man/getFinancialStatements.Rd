@@ -67,13 +67,13 @@ Michel Ricardo Meyer \email{michel.ricardo.meyer@gmail.com}
 }
 \examples{
 # There are two ultimate examples, The first is:
-View(getFinancialStatements(c(4170, "CIA VALE DO RIO DOCE", "33.592.510/0001-54", "VALE")))
+getFinancialStatements(c(4170, "CIA VALE DO RIO DOCE", "33.592.510/0001-54", "VALE"))
 # That downloads the vale financial statements four times,
 # One time for each kind of company information given.
 # Notice that the function also accepts the name of the firm, unlike said in arguments section.
 
 # The second example is:
-View(getFinancialStatements("VALE", "2015-12"))
+getFinancialStatements("VALE", "2015-12")
 # Here there are a difference in the output, the information looks much more like
 # the original format that it's available in CVM's system. it's intentional,
 # this is the original infomation. Use it if you need to.

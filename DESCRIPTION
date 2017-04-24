@@ -1,12 +1,15 @@
 Package: bovdata
 Type: Package
-Title: What the package does (short line)
+Title: Download security price data and financial statements from firms negotiated on BVMF&Bovespa
 Version: 1.0
 Date: 2017-01-31
 Author: Michel Ricardo Meyer and Regis Augusto Ely
 Maintainer: Michel Ricardo Meyer <michel.ricardo.meyer@gmail.com>
 Description: Download the Security Price data and Financial Statements of the companies with shares traded on the BM&FBovespa.
-License: GNU GPL
-Imports:
+License: GPL
+Imports: 
     xts,
-    zoo
+    zoo,
+    methods,
+    utils
+RoxygenNote: 6.0.1

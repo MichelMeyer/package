@@ -990,6 +990,11 @@ getIncomeStatements <- function(firms, quarter = NULL, adjust = F) {
 
 info.search <- function(info = "", ...) {
   info <- toupper(info)
+  if("silent" %in% names(list(...))) { 
+    silent <- list(...)$silent
+  } else {
+    silent <- FALSE
+  }
   dicionario <- get.files("dicionariocompleto")
   if(all(strsplit(as.character(info), "")[[1]] %in% as.character(0:9))) {
     x <- grep(info, dicionario$CodigoCvm)
@@ -1010,10 +1015,7 @@ info.search <- function(info = "", ...) {
                     SocialName = tail(strsplit(dic["RazaoSocial"], "; ")[[1]], 1),
                     NegotiationCode = paste(unlist(lapply(1 : length(x), function(j) x[[j]][1])),
                                             collapse = " "))
-    
     parte2 <- cbind("Used Social Names" = strsplit(dic["RazaoSocial"], "; ")[[1]])
-    
-    
     parte <- lapply(x, function(j) {
       j.1 <- matrix(strsplit(j[2], " ")[[1]], ncol = 3, byrow = T)
       j.1[, 1] <- paste0(j[1], j.1[, 1])
@@ -1048,8 +1050,61 @@ info.search <- function(info = "", ...) {
   
   names(x)[1] <- "summary"
   
-  print(x$summary)
+  if( ! silent)
+    print(x$summary)
   
   return(invisible(x))
   
+}
+
+codeMatching <- function(info = NULL, info.class = "CVMCode") {
+  if(is.null(info) |
+     ! (info.class %in% c("CVMCode", "CNPJ", "SocialName", "NegotiationCode", "NegCode"))) {
+    if(is.null(info)) {
+      warning("You need to provide some information.")
+    } else {
+      warning("info.class misspecified.")
+    }
+  } else {
+    if(info.class == "NegCode")
+      info.class <- "NegotiationCode"
+    data <- info.search(info, silent = T)
+    x <- grepl(info, data$summary[, info.class])
+    if( ! any(x)) {
+      warning("Verify if the info is spelled correctly")
+      return(NULL)
+    }
+    x <- substr(data$summary[x, "NegotiationCode"], 1, 4)
+    x <- sort(x)
+    data <- lapply(x, function(i) {
+      dataCut <- data[[i]]
+      CVMCode <- dataCut[[1]][[1]]
+      dataCut <- dataCut[[3]]
+      dataCut[, 1] <- substr(dataCut[, 1], 1, 4)
+      dataCut <- lapply(unique(dataCut[, 1]), function(j) {
+        cutondatacut <- dataCut[dataCut[, 1] == j, ] # \o/
+        return(c(j, min(cutondatacut[, 2]), max(cutondatacut[, 3])))
+      })
+      dataCut <- cbind(CVMCode, t(data.frame(dataCut)))
+      colnames(dataCut) <- c("CVMCode", "NegCode", "from", "to")
+      if(nrow(dataCut) != 1) {
+        dataCut <- data.frame(dataCut[order(dataCut[, "from"]), ], stringsAsFactors = F)
+      } else {
+        dataCut <- as.data.frame(dataCut)
+      }
+      dataCut[, "from"] <- as.Date(as.matrix(dataCut[, "from"]), "%Y%m%d")
+      dataCut[,   "to"] <- as.Date(as.matrix(dataCut[,   "to"]), "%Y%m%d")
+      rownames(dataCut) <- NULL
+      
+      return(dataCut)
+    })
+    x <- NULL
+    for(i in seq_along(data)) {
+      x <- rbind(x, data[[i]])
+    }
+    x[, "CVMCode"] <- as.numeric(as.matrix(x[, "CVMCode"]))
+    x[, "NegCode"] <- as.matrix(x[, "NegCode"])
+    
+    return(x)
+  }
 }
