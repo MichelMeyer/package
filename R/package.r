@@ -7,25 +7,23 @@ get.files <- function(link) {
   if( ! dir.exists(paste0(tempdir(),"\\omni")))
     dir.create(paste0(tempdir(),"\\omni"))
   
-  if(file.exists(paste0(tempdir(), "\\omni\\", link, ".txt"))) {
-    file <- read.table(paste0(tempdir(), "\\omni\\", link, ".txt"),
-                       header = T, stringsAsFactors = F)
+  if(file.exists(paste0(tempdir(), "\\omni\\", link))) {
+    file <- readRDS(file = paste0(tempdir(), "\\omni\\", link))
     
   } else {
     links <- data.frame(
-      dicionariocompleto = "https://dl.dropboxusercontent.com/s/sqqhn6d7g5vnhxf/dicionariocompleto.txt?dl=0",
-      dicionariobruto = "https://dl.dropboxusercontent.com/s/yntx5i6xi66ld66/dicionariobruto.txt?dl=0",
-      linkseventos = "https://dl.dropboxusercontent.com/s/ecafaixl0lw0292/linkseventos.txt?dl=0",
-      linkscotacoes = "https://dl.dropboxusercontent.com/s/x4uzbx1wahh6xy3/linkscotacoes.txt?dl=0",
-      linksbalancos = "https://dl.dropboxusercontent.com/s/iaabhpybci6jy4x/linksbalancos.txt?dl=0",
-      codbdi = "https://dl.dropboxusercontent.com/s/b1la2bhs1nddd2x/codbdi.txt?dl=0",
+      dicionariocompleto = "https://dl.dropboxusercontent.com/s/tfuecu6qf9zncqq/dicionariocompleto?dl=0",
+      dicionariobruto = "https://dl.dropboxusercontent.com/s/xvuymesxgcarf6d/dicionariobruto?dl=0",
+      linkseventos = "https://dl.dropboxusercontent.com/s/4t5768mf5ofe0cc/linkseventos?dl=0",
+      linkscotacoes = "https://dl.dropboxusercontent.com/s/38kgfw1ouh5ncvb/linkscotacoes?dl=0",
+      linksbalancos = "https://dl.dropboxusercontent.com/s/gp2le8ot5i27oqh/linksbalancos?dl=0",
+      codbdi = "https://dl.dropboxusercontent.com/s/nglkveliq036y7w/codbdit?dl=0",
       stringsAsFactors = F
     )
     
-    file <- read.table(url(links[link][[1]]), header = T, stringsAsFactors = F)
-    write.table(file, paste0(tempdir(), "\\omni\\", link, ".txt"), row.names = F)
+    download.file(links[link][[1]], destfile = paste0(tempdir(), "\\omni\\", link), quiet = T, mode = "wb")
+    file <- readRDS(file = paste0(tempdir(), "\\omni\\", link))
   }
-  
   
   closeAllConnections()
   return(file)
@@ -60,12 +58,12 @@ get.shares <- function(Shares, envir = NULL) {
           tupdate <- as.POSIXct(paste(tupdate, "22:00:00"))
           if(tfile <= tupdate & Sys.time() >= tupdate) {
             x <- paste0("https://dl.dropboxusercontent.com/s/",
-                        x, "/", share, ".csv?dl=0")
+                        x, "/", share, "?dl=0")
             download.file(x, destfile = dest, mode = "wb", quiet = T) 
           }
           rm(tfile, tupdate)
         } else {  
-          x <- paste0("https://dl.dropboxusercontent.com/s/", x, "/", share, ".csv?dl=0")
+          x <- paste0("https://dl.dropboxusercontent.com/s/", x, "/", share, "?dl=0")
           download.file(x, destfile = dest, mode = "wb", quiet = T)
         }
         t <- try(x <- readRDS(dest), silent = T)
@@ -194,20 +192,20 @@ get.fin.stat <- function(firms, quarter = NULL) {
         tupdate <- as.POSIXct(paste(tupdate, "22:00:00"))
         if(tfile <= tupdate & Sys.time() >= tupdate) {
           link <- paste0("https://dl.dropboxusercontent.com/s/",
-                         balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, ".csv?dl=0")
+                         balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, "?dl=0")
           download.file(link, destfile = dest, mode = "wb", quiet = T)
         }
         rm(tfile, tupdate)
       } else {  
         link <- paste0("https://dl.dropboxusercontent.com/s/",
-                       balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, ".csv?dl=0")
+                       balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, "?dl=0")
         download.file(link, destfile = dest, mode = "wb", quiet = T)
       }
       try(x <- readRDS(dest), silent = T)
       if(is.null(x))
         if( ! system(paste("ping", "www.dropbox.com"), show.output.on.console = F)) {  
           link <- paste0("https://dl.dropboxusercontent.com/s/",
-                         balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, ".csv?dl=0")
+                         balancos[balancos$EMPRESA == firm, ]$LINK, "/", firm, "?dl=0")
           download.file(link, destfile = dest, mode = "wb", quiet = T)
           try(x <- readRDS(dest), silent = T)
         } else {
@@ -254,7 +252,9 @@ get.fin.stat <- function(firms, quarter = NULL) {
   return(fin.stat)
 }
 
+
 # Package principal functions:
+
 getPrices <- function(shares,
                       info = "simplified", value = "Close", fill = NA) {
   if (missingArg(shares)) {
@@ -447,6 +447,7 @@ getPrices <- function(shares,
   }
   
 }
+
 getAdjPrices <- function(shares,
                          by = "all", subscription = "rational",
                          info = "simplified", value = "Return", fill = NA) {
@@ -525,12 +526,12 @@ getAdjPrices <- function(shares,
     if( ! file.exists(dist)) {
       link <- paste0("https://dl.dropboxusercontent.com/s/", 
                      dic2[dic2$EMPRESA == matriz.ajuste, "LINK"], "/",
-                     matriz.ajuste, ".csv?dl=0")
+                     matriz.ajuste, "?dl=0")
       download.file(link, dist,
                     mode = "wb", quiet = T)
       rm(link)
     }
-    matriz.ajuste <- read.csv2(dist, stringsAsFactors = F, fileEncoding = "ISO8859-1")
+    matriz.ajuste <- readRDS(dist)
     rm(dist)
     tipo <- c("fator.ON",  "fator.PN",  "fator.PNA",
               "fator.PNB", "fator.PNC", "fator.PND")
@@ -802,6 +803,7 @@ getAdjPrices <- function(shares,
   
   return(x)
 }
+
 getFinancialStatements <- function(firms, quarter = NULL) {
   if (missingArg(firms)) {
     warning ("You need to chose at list a firm.")
