@@ -991,6 +991,70 @@ getIncomeStatements <- function(firms, quarter = NULL, adjust = F) {
 }
 
 info.search <- function(info = "", ...) {
+  TratCarLatins <- function(painel) {
+    
+    classe <- class(painel)
+    
+    if(any(classe %in% "data.table")) {
+      setDF(painel)
+    } else {
+      painel <- data.frame(painel, stringsAsFactors = F)
+    }
+    
+    caracteres <- c("[ç]", "c",
+                    "[ñ]", "n",
+                    "[áàãâ]", "a",
+                    "[éèê]", "e",
+                    "[íìî]", "i",
+                    "[óòõô]", "o",
+                    "[úùû]", "u")
+    caracteres <- c(caracteres, toupper(caracteres))
+    caracteres <- matrix(caracteres, ncol = 2, byrow = T)
+    
+    
+    colunas <- which(unlist(lapply( seq_along(painel[1, ]), function(i) {
+      return(class(painel[, i]) == "character")
+    })))
+    
+    if((dim(painel)[2]) == 1) {
+      
+      for(j in seq_along(caracteres[, 1])) {
+        painel[, 1] <- gsub(caracteres[j, 1], caracteres[j, 2], painel[, 1])
+      }
+      
+    } else {
+      
+      painel[colunas] <- apply(painel[, colunas], 2, function(i) {
+        for(j in seq_along(caracteres[, 1])) {
+          i <- gsub(caracteres[j, 1], caracteres[j, 2], i)
+        }
+        return(i)
+      })
+    }
+    
+    i <- colnames(painel)
+    for(j in seq_along(caracteres[, 1])) {
+      i <- gsub(caracteres[j, 1], caracteres[j, 2], i)
+    }
+    colnames(painel) <- i
+    
+    if( ! any(classe %in% c("matrix", "data.table", "data.frame", "character")))
+      stop("classe não encontrada")
+    
+    if(any(classe %in% "character"))
+      if(dim(painel)[2] == 1) {
+        painel <- painel[, 1]
+      } else {
+        painel <- as.character(painel)
+      }
+    if(any(classe %in% "matrix"))
+      painel <- as.matrix(painel)
+    if(any(classe %in% "data.table"))
+      setDT(painel)
+    
+    return(painel)
+  }
+  info <- TratCarLatins(info)
   info <- toupper(info)
   if("silent" %in% names(list(...))) { 
     silent <- list(...)$silent
@@ -1009,7 +1073,7 @@ info.search <- function(info = "", ...) {
     break
   }
   x <- sort(table(x), decreasing = T)
-  dicionario <- dicionario[names(x), ]
+  dicionario <- dicionario[as.numeric(names(x)), ]
   x <- apply(dicionario, 1, function(dic) {
     x <- strsplit(strsplit(dic["INFORMACOES"], ";")[[1]], " = ")    
     parte1 <- cbind(CVMCode = dic["CodigoCvm"],
@@ -1068,8 +1132,10 @@ codeMatching <- function(info = NULL, info.class = "CVMCode") {
       warning("info.class misspecified.")
     }
   } else {
-    if(info.class == "NegCode")
+    if(info.class == "NegCode") 
       info.class <- "NegotiationCode"
+    if(info.class == "NegotiationCode")
+      info <- substr(info, 1, 4)
     data <- info.search(info, silent = T)
     x <- grepl(info, data$summary[, info.class])
     if( ! any(x)) {
