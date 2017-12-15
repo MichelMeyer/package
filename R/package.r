@@ -91,7 +91,7 @@ get.shares <- function(Shares, envir = NULL) {
 }
 get.fin.stat <- function(firms, quarter = NULL) {
   
-  if( ! is.null(quarter) & length(firms) > 1) {
+  if( ifelse(is.null(quarter), T, quarter != "all") & length(firms) > 1) {
     quarter <<- quarter <- NULL
     warning("Argument quarter is not applied when there is more than one code.")
   }
@@ -102,7 +102,8 @@ get.fin.stat <- function(firms, quarter = NULL) {
   balancos <- get.files("linksbalancos")
   
   if("all" %in% firms) {
-    firms <- sort(c(firms[firms != "all"], unique(dicionario[, 1])))
+    firms <- c(firms[firms != "all"], unique(dicionario[, 1]))
+    firms <- firms[order(as.numeric(firms))]
   }
   
   if(all(firms %in% 3)) {
@@ -212,21 +213,37 @@ get.fin.stat <- function(firms, quarter = NULL) {
           warning("Problems in the connection!")
           return(NULL)
         }
+      
       if( ! is.null(quarter)) {
         
         x <- x[, which(colnames(x) == "V1") : ncol(x)]
         
-        if(any(substr(x[, "V6"], 1, 7) == quarter)) {
+        unico <- ifelse(length(quarter) == 1 & quarter != "all", T, F)
+        
+        if(any(quarter %in% "all"))
+          quarter <- substr(x[, "V6"], 1, 7) [-(1:3)]
+        quarter <- quarter[quarter %in% substr(x[, "V6"], 1, 7)]
+        
+        if(any(substr(x[, "V6"], 1, 7) %in% quarter)) {       
           
-          x <- x[c(1 : 3, which(substr(x[, "V6"], 1, 7) == quarter)), ]
-          x <- x[, x[4, ] != ""]
-          x <- t(x)
+          x <- lapply(quarter, function(quarter.t) {
+            x <- x[c(1 : 3, which(substr(x[, "V6"], 1, 7) == quarter.t)), ]
+            pos <- unique(which(x[4 : nrow(x), ] != "", arr.ind = T)[, 2])
+            x <- x[, as.numeric(pos)]
+            x <- t(x)
+            
+            rownames(x) <- NULL
+            colnames(x) <- c("kind of information", "id of account", "name of account", rep("Value", ncol(x) - 3))
+            x[x[, 1] == "-", 1] <- "firm's basic information"
+            x[x[, 1] == "1", 1] <- "Individual Result"
+            x[x[, 1] == "2", 1] <- "Consolidated Result"
+            return(x)
+          })
           
-          rownames(x) <- NULL
-          colnames(x) <- c("kind of information", "id of account", "name of account", "Value")
-          x[x[, 1] == "-", 1] <- "firm's basic information"
-          x[x[, 1] == "1", 1] <- "Individual Result"
-          x[x[, 1] == "2", 1] <- "Consolidated Result"
+          names(x) <- quarter
+          
+          if(unico)
+            x <- x[[1]]
           
         } else {
           
@@ -245,13 +262,14 @@ get.fin.stat <- function(firms, quarter = NULL) {
         x <- x[, 1 : (which(colnames(x) == "V1") - 1)]
         x <- x[1 : (nrow(x) - 3), ]
       }
+      
       return(x)
     }
   })
+  names(fin.stat) <- firms
   closeAllConnections()
   return(fin.stat)
 }
-
 
 # Package principal functions:
 
@@ -808,6 +826,7 @@ getFinancialStatements <- function(firms, quarter = NULL) {
   if (missingArg(firms)) {
     warning ("You need to chose at list a firm.")
   } else {
+    quarter <- ifelse( ! is.null(quarter), ifelse(any(quarter %in% "all"), NULL, quarter), NULL)
     teste <- get.fin.stat(firms, quarter)
     x = misspecified = NULL
     for(i in seq_along(teste)) {
@@ -839,9 +858,11 @@ getFinancialStatements <- function(firms, quarter = NULL) {
 }
 
 getBalanceSheet <- function(firms, quarter = NULL) {
+  
   if (missingArg(firms)) {
     warning ("You need to chose at list a firm.")
   } else {
+    quarter <- ifelse( ! is.null(quarter), ifelse(any(quarter %in% "all"), NULL, quarter), NULL)
     FIRMS <- get.fin.stat(firms, quarter)
     
     x = misspecified = NULL
@@ -1056,7 +1077,7 @@ info.search <- function(info = "", ...) {
   }
   info <- TratCarLatins(info)
   info <- toupper(info)
-  if("silent" %in% names(list(...))) { 
+  if("silent" %in% names(list(...))) {
     silent <- list(...)$silent
   } else {
     silent <- FALSE
@@ -1176,3 +1197,4 @@ codeMatching <- function(info = NULL, info.class = "CVMCode") {
     return(x)
   }
 }
+
