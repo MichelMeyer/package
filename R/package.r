@@ -78,7 +78,7 @@ get.shares <- function(Shares, envir = NULL) {
       x$DATVEN <- as.Date(as.character(x$DATVEN), "%Y%m%d")
       x$QuaTot <- as.numeric(x$QuaTot)
       
-      if(length(unique(x[, "CODBDI"])) > 1)
+      if(length(unique(x[, "CODBDI"])) > 1 & any(duplicated(x[, "DATAPREG"])))
         x <- x[x[, "CODBDI"] %in%
                  names(sort(table(x[, "CODBDI"]), decreasing = T))[[1]], ]
       
@@ -91,7 +91,7 @@ get.shares <- function(Shares, envir = NULL) {
 }
 get.fin.stat <- function(firms, quarter = NULL) {
   
-  if( ifelse(is.null(quarter), T, quarter != "all") & length(firms) > 1) {
+  if( ifelse(is.null(quarter), F, quarter != "all") & length(firms) > 1) {
     quarter <<- quarter <- NULL
     warning("Argument quarter is not applied when there is more than one code.")
   }
@@ -826,7 +826,9 @@ getFinancialStatements <- function(firms, quarter = NULL) {
   if (missingArg(firms)) {
     warning ("You need to chose at list a firm.")
   } else {
-    quarter <- ifelse( ! is.null(quarter), ifelse(any(quarter %in% "all"), NULL, quarter), NULL)
+    if( ! is.null(quarter))
+      if(any(quarter %in% "all"))
+      quarter <- NULL
     teste <- get.fin.stat(firms, quarter)
     x = misspecified = NULL
     for(i in seq_along(teste)) {
@@ -862,7 +864,10 @@ getBalanceSheet <- function(firms, quarter = NULL) {
   if (missingArg(firms)) {
     warning ("You need to chose at list a firm.")
   } else {
-    quarter <- ifelse( ! is.null(quarter), ifelse(any(quarter %in% "all"), NULL, quarter), NULL)
+    if( ! is.null(quarter))
+      if(any(quarter %in% "all"))
+        quarter <- NULL
+      
     FIRMS <- get.fin.stat(firms, quarter)
     
     x = misspecified = NULL
