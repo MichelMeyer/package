@@ -12,12 +12,12 @@ get.files <- function(link) {
     
   } else {
     links <- data.frame(
-      dicionariocompleto = "https://dl.dropboxusercontent.com/s/tfuecu6qf9zncqq/dicionariocompleto?dl=0",
-      dicionariobruto = "https://dl.dropboxusercontent.com/s/xvuymesxgcarf6d/dicionariobruto?dl=0",
-      linkseventos = "https://dl.dropboxusercontent.com/s/4t5768mf5ofe0cc/linkseventos?dl=0",
-      linkscotacoes = "https://dl.dropboxusercontent.com/s/38kgfw1ouh5ncvb/linkscotacoes?dl=0",
-      linksbalancos = "https://dl.dropboxusercontent.com/s/gp2le8ot5i27oqh/linksbalancos?dl=0",
-      codbdi = "https://dl.dropboxusercontent.com/s/nglkveliq036y7w/codbdit?dl=0",
+      dicionariocompleto = "https://dl.dropboxusercontent.com/s/8gsf6ja9t62kk0l/dicionariocompleto?dl=0",
+      dicionariobruto = "https://dl.dropboxusercontent.com/s/i54k1uitkc1y142/dicionariobruto?dl=0",
+      linkseventos = "https://dl.dropboxusercontent.com/s/a6kwhqdydqwsz5w/linkseventos?dl=0",
+      linkscotacoes = "https://dl.dropboxusercontent.com/s/ru0zwcygx75ou01/linkscotacoes?dl=0",
+      linksbalancos = "https://dl.dropboxusercontent.com/s/fvmsv492b83kcdz/linksbalancos?dl=0",
+      codbdi = "https://dl.dropboxusercontent.com/s/4ifs6ywn5spvd7y/codbdit?dl=0",
       stringsAsFactors = F
     )
     
@@ -25,7 +25,6 @@ get.files <- function(link) {
     file <- readRDS(file = paste0(tempdir(), "\\omni\\", link))
   }
   
-  closeAllConnections()
   return(file)
 }
 get.shares <- function(Shares, envir = NULL) {
@@ -85,7 +84,6 @@ get.shares <- function(Shares, envir = NULL) {
       return(x)
     }
   })
-  closeAllConnections()
   
   return(teste)
 }
@@ -267,7 +265,6 @@ get.fin.stat <- function(firms, quarter = NULL) {
     }
   })
   names(fin.stat) <- firms
-  closeAllConnections()
   return(fin.stat)
 }
 
@@ -675,6 +672,8 @@ getAdjPrices <- function(shares,
         }
   
   names(teste) <- shares
+  if(length(teste) == 0)
+    teste <- NULL
   x = misspecified = NULL
   
   if( ! (is.null(unlist(teste)))) {
